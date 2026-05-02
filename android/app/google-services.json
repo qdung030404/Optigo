@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "203195376457",
+    "project_id": "optigo-420c2",
+    "storage_bucket": "optigo-420c2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:203195376457:android:50e014466076ca9a1f7098",
+        "android_client_info": {
+          "package_name": "com.example.optigo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmnce0nQ0ejoxzcMU-Mty9u1hp6b39c20"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
