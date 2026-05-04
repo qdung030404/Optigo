@@ -47,3 +47,4 @@ app.*.map.json
 # Firebase
 firebase-cli.log*
 android/app/google-services.json
+/.env

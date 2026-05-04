@@ -44,14 +44,7 @@ class AuthProvider extends ChangeNotifier {
           print('[AUTH] verificationCompleted fired');
           try {
             UserCredential userCredential = await _auth.signInWithCredential(credential);
-            _user = UserModel(
-              uid: userCredential.user?.uid ?? '',
-              userName: '',
-              phoneNumber: userCredential.user?.phoneNumber ?? '',
-            );
-            _status = AuthStatus.authenticated;
-            notifyListeners();
-            if (!completer.isCompleted) completer.complete();
+            await _handleUserSignIn(userCredential);
           } catch (e) {
             if (!completer.isCompleted) completer.completeError(e);
           }
@@ -100,18 +93,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       UserCredential userCredential = await _auth.signInWithCredential(credential);
-      bool isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
-      _user = UserModel(
-        uid: userCredential.user?.uid ?? '',
-        userName: '', 
-        phoneNumber: userCredential.user?.phoneNumber ?? '',
-      );
-      if (isNewUser) {
-        _status = AuthStatus.unregistered;
-      } else {
-        _status = AuthStatus.authenticated;
-      }
-      notifyListeners();
+      await _handleUserSignIn(userCredential);
     } on FirebaseAuthException catch (e) {
       errorText = e.message ?? e.toString();
       _status = AuthStatus.error;
@@ -148,11 +130,31 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  // Đăng xuất
+  
   Future<void> signOut() async {
     await _auth.signOut();
     _user = null;
     _status = AuthStatus.initial;
+    notifyListeners();
+  }
+
+  Future<void> _handleUserSignIn(UserCredential userCredential) async {
+    final String uid = userCredential.user?.uid ?? '';
+
+    DocumentSnapshot userDoc =
+        await _firestore.collection('users').doc(uid).get();
+
+    if (userDoc.exists) {
+      _user = UserModel.formMap(userDoc.data() as Map<String, dynamic>, uid);
+      _status = AuthStatus.authenticated;
+    } else {
+      _user = UserModel(
+        uid: uid,
+        userName: '',
+        phoneNumber: userCredential.user?.phoneNumber ?? '',
+      );
+      _status = AuthStatus.unregistered;
+    }
     notifyListeners();
   }
 }
