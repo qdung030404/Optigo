@@ -4,4 +4,6 @@ class Routes {
   static const login = 'login';
   static const otp = 'otp';
   static const setUserName = 'set_name';
+  static const search = 'search';
+  static const profile = 'profile';
 }
