@@ -1,20 +1,20 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
-import 'package:optigo/models/place_model.dart';
 
-enum MapType { initial, locating, locationError, searching, searchError }
+enum MapType { initial, locating, locationError }
 
 class MapProvider extends ChangeNotifier {
   static String get goongStyleUrl {
     final key = dotenv.env['GOONG_MAPTILES_KEY'] ?? '';
     return 'https://tiles.goong.io/assets/goong_map_highlight.json?api_key=$key';
   }
-
-  final apiKey = dotenv.env['GOONG_API_KEY'];
 
   MapType _mapType = MapType.initial;
   MapType get mapType => _mapType;
@@ -25,27 +25,40 @@ class MapProvider extends ChangeNotifier {
 
   MapLibreMapController? _controller;
   String? _locationError;
-  String? _searchError;
-  Symbol? _currentLocationMarker;
+  Symbol? _destinationPoint;
+  LatLng? currentLatLng;
+  LatLng? destinationLatLng;
 
-  List<PlaceModel> _searchResults = [];
 
   bool get locating => mapType == MapType.locating;
-  bool get searching => mapType == MapType.searching;
   String? get locationError => _locationError;
-  String? get searchError => _searchError;
-  List<PlaceModel> get searchResults => _searchResults;
   MapLibreMapController? get controller => _controller;
+
+  // Trạng thái vẽ đường
+  bool _isLineAdded = false;
+  static const String _lineSourceId = "line_source";
+  static const String _lineLayerId = "line_layer";
 
   // ─── Map lifecycle ────────────────────────────────────────────────────────
 
   void onMapCreated(MapLibreMapController controller) {
     _controller = controller;
+    _isLineAdded = false; // Reset trạng thái vẽ đường khi tạo map mới
     notifyListeners();
   }
 
   Future<void> onStyleLoaded() async {
-    _isStyleLoaded = true; // Đánh dấu đã tải xong style vĩnh viễn
+    _isStyleLoaded = true;
+    
+    // Nạp icon custom từ assets vào bản đồ
+    try {
+      final ByteData bytes = await rootBundle.load("assets/images/locationEnd.png");
+      final Uint8List list = bytes.buffer.asUint8List();
+      await _controller?.addImage("location-end-icon", list);
+    } catch (e) {
+      debugPrint("Lỗi nạp icon marker: $e");
+    }
+
     notifyListeners();
     await goToCurrentLocation();
   }
@@ -86,28 +99,15 @@ class MapProvider extends ChangeNotifier {
 
       final latLng = LatLng(position.latitude, position.longitude);
 
-      if (_controller != null) {
-        if (_currentLocationMarker != null) {
-          await _controller!.removeSymbol(_currentLocationMarker!);
-        }
+      currentLatLng = latLng;
 
-        _currentLocationMarker = await _controller!.addSymbol(
-          SymbolOptions(
-            geometry: latLng,
-            iconImage: 'marker-15',
-            iconSize: 1.5,
-          ),
-        );
-      }
 
       await _controller?.animateCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: latLng,
-            zoom: 15,
-          ),
+          CameraPosition(target: latLng, zoom: 15),
         ),
       );
+      
     } catch (e) {
       _mapType = MapType.locationError;
       _locationError = 'Không thể lấy vị trí: $e';
@@ -117,86 +117,132 @@ class MapProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Search Place ─────────────────────────────────────────────────────────
+  /// Di chuyển camera và cắm marker tại tọa độ bất kỳ
+  Future<void> moveCameraAndAddMarker(LatLng latLng, {double zoom = 15}) async {
+    if (_controller == null) return;
 
-  Future<void> searchPlace(String input) async {
-    if (input.isEmpty) {
-      _searchResults = [];
-      notifyListeners();
-      return;
+    if (_destinationPoint != null) {
+      await _controller!.removeSymbol(_destinationPoint!);
     }
 
-    _mapType = MapType.searching;
-    _searchError = null;
+    _destinationPoint = await _controller!.addSymbol(
+      SymbolOptions(
+        geometry: latLng,
+        iconImage: 'location-end-icon', // Sử dụng icon đã nạp
+        iconSize: 0.3 // Điều chỉnh size cho phù hợp với ảnh PNG
+      ),
+    );
+    destinationLatLng = latLng;
+
+
+    await _controller!.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: latLng,
+          zoom: zoom,
+        ),
+      ),
+    );
     notifyListeners();
-
-    final url =
-        'https://rsapi.goong.io/Place/Autocomplete?api_key=$apiKey&input=${Uri.encodeComponent(input)}';
-
+  }
+  Future<void> getDirection() async {
     try {
-      final response = await http.get(Uri.parse(url));
+      if (currentLatLng != null && destinationLatLng != null) {
+        final apiKey = dotenv.env['GOONG_API_KEY'];
+        final url = 'https://rsapi.goong.io/Direction?origin=${currentLatLng!.latitude},${currentLatLng!.longitude}&destination=${destinationLatLng!.latitude},${destinationLatLng!.longitude}&vehicle=car&api_key=$apiKey';
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'OK') {
-          final List predictions = data['predictions'];
-          _searchResults =
-              predictions.map((p) => PlaceModel.fromJson(p)).toList();
-        } else {
-          _searchError = 'Lỗi từ API Goong: ${data['status']}';
+        var response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+
+          // Kiểm tra list routes có dữ liệu hay không trước khi truy cập
+          if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
+            var route = data['routes'][0]['overview_polyline']['points'];
+            List<PointLatLng> result = PolylinePoints.decodePolyline(route);
+            List<List<double>> coordinates = result.map((point) => [point.longitude, point.latitude]).toList();
+            _drawLine(coordinates);
+          }
         }
-      } else {
-        _searchError = 'Lỗi kết nối server: ${response.statusCode}';
       }
     } catch (e) {
-      _mapType = MapType.searchError;
-      _searchError = 'Không thể tìm kiếm: $e';
-    } finally {
-      if (_mapType == MapType.searching) {
-        _mapType = MapType.initial;
-      }
-      notifyListeners();
+      debugPrint('Error getting direction: $e');
     }
   }
 
-  Future<void> selectPlace(String placeId) async {
-    final url =
-        'https://rsapi.goong.io/Place/Detail?api_key=$apiKey&place_id=$placeId';
+  Future<void> _drawLine(List<List<double>> coordinates) async {
+    if (_controller == null || coordinates.isEmpty) return;
 
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'OK') {
-          final location = data['result']['geometry']['location'];
-          final latLng = LatLng(location['lat'], location['lng']);
-          if (_currentLocationMarker != null) {
-            await _controller!.removeSymbol(_currentLocationMarker!);
-          }
-          _currentLocationMarker = await _controller!.addSymbol(
-            SymbolOptions(
-              geometry: latLng,
-              iconImage: 'marker-15',
-              iconSize: 1.5,
-            ),
-          );
-          _searchResults = [];
-          notifyListeners();
-          _controller!.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(
-                target: latLng,
-                zoom: 15,
-              ),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      _mapType = MapType.searchError;
-      _searchError = ' Lỗi: $e';
-      notifyListeners();
+    final geoJsonData = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "LineString",
+            "coordinates": coordinates,
+          },
+        },
+      ],
+    };
+
+    if (_isLineAdded) {
+      await _controller?.setGeoJsonSource(_lineSourceId, geoJsonData);
+    } else {
+      await _controller?.addSource(
+        _lineSourceId,
+        GeojsonSourceProperties(data: geoJsonData),
+      );
+
+      await _controller?.addLineLayer(
+        _lineSourceId,
+        _lineLayerId,
+        const LineLayerProperties(
+          lineColor: "#4A90E2",
+          lineWidth: 6,
+          lineCap: "round",
+          lineJoin: "round",
+        ),
+      );
+      _isLineAdded = true;
     }
+
+    // Zoom để thấy toàn bộ tuyến đường
+    _zoomToFit(coordinates);
+  }
+
+  void _zoomToFit(List<List<double>> coordinates) {
+    if (coordinates.isEmpty) return;
+
+    double minLat = coordinates[0][1];
+    double maxLat = coordinates[0][1];
+    double minLng = coordinates[0][0];
+    double maxLng = coordinates[0][0];
+
+    for (var coord in coordinates) {
+      if (coord[1] < minLat) minLat = coord[1];
+      if (coord[1] > maxLat) maxLat = coord[1];
+      if (coord[0] < minLng) minLng = coord[0];
+      if (coord[0] > maxLng) maxLng = coord[0];
+    }
+
+    _controller?.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
+        ),
+        left: 64,
+        top: 150, // Tránh bị AppBar che
+        right: 64,
+        bottom: 100, // Tránh bị các nút bấm che
+      ),
+    );
+  }
+
+  void clearLocationError() {
+    _locationError = null;
+    notifyListeners();
   }
 
   @override

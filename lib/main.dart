@@ -5,12 +5,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:optigo/config/routes.dart';
 import 'package:optigo/providers/auth_provider.dart';
 import 'package:optigo/providers/map_provider.dart';
+import 'package:optigo/providers/search_provider.dart';
 import 'package:optigo/providers/splash_provider.dart';
 import 'package:optigo/views/auth/login_screen.dart';
 import 'package:optigo/views/auth/otp_screen.dart';
 import 'package:optigo/views/auth/set_user_name.dart';
 import 'package:optigo/views/home/home_screen.dart';
-import 'package:optigo/views/search/search_screen.dart';
 import 'package:optigo/views/splash_screen.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -32,9 +32,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: AuthProvider()),
-        ChangeNotifierProvider.value(value: SplashProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => SplashProvider()),
         ChangeNotifierProvider(create: (_) => MapProvider()),
+        ChangeNotifierProvider(create: (_) => SearchProvider())
       ],
       child: ScreenUtilInit(
         designSize: Size(414, 896),
@@ -50,8 +51,6 @@ class MyApp extends StatelessWidget {
               Routes.otp: (ctx) => OtpScreen(),       // <-- Thêm dòng này
               Routes.setUserName: (ctx) => SetUserName(),
               Routes.home: (ctx) => HomeScreen(),
-              Routes.search: (ctx) => SearchScreen()
-
             },
           );
         }),
