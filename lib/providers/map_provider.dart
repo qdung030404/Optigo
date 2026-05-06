@@ -7,6 +7,7 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:optigo/providers/search_provider.dart';
 
 enum MapType { initial, locating, locationError }
 
@@ -33,6 +34,12 @@ class MapProvider extends ChangeNotifier {
   bool get locating => mapType == MapType.locating;
   String? get locationError => _locationError;
   MapLibreMapController? get controller => _controller;
+
+  SearchProvider? _searchProvider;
+
+  void update(SearchProvider searchProvider) {
+    _searchProvider = searchProvider;
+  }
 
   // Trạng thái vẽ đường
   bool _isLineAdded = false;
@@ -107,7 +114,17 @@ class MapProvider extends ChangeNotifier {
           CameraPosition(target: latLng, zoom: 15),
         ),
       );
-      
+
+      // Lấy địa chỉ từ SearchProvider đã được inject
+      if (_searchProvider != null) {
+        final currentPlace = await _searchProvider!.getPlaceFromLatLng(
+          position.latitude,
+          position.longitude,
+        );
+        if (currentPlace != null) {
+          debugPrint("Địa chỉ hiện tại: ${currentPlace.description}");
+        }
+      }
     } catch (e) {
       _mapType = MapType.locationError;
       _locationError = 'Không thể lấy vị trí: $e';

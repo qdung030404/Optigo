@@ -10,12 +10,12 @@ class SearchProvider extends ChangeNotifier {
   final String? apiKey = dotenv.env['GOONG_API_KEY'];
 
   List<PlaceModel> _searchResults = [];
-  List<String> _searchHistory = [];
+  List<PlaceModel> _searchHistory = [];
   bool _isSearching = false;
   String? _searchError;
 
   List<PlaceModel> get searchResults => _searchResults;
-  List<String> get searchHistory => _searchHistory;
+  List<PlaceModel> get searchHistory => _searchHistory;
   bool get isSearching => _isSearching;
   String? get searchError => _searchError;
 
@@ -62,6 +62,30 @@ class SearchProvider extends ChangeNotifier {
     }
   }
 
+  /// Lấy thông tin địa danh từ tọa độ (Reverse Geocoding)
+  Future<PlaceModel?> getPlaceFromLatLng(double lat, double lng) async {
+    final url = 'https://rsapi.goong.io/Geocode?latlng=$lat,$lng&api_key=$apiKey';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK' && data['results'] != null && (data['results'] as List).isNotEmpty) {
+          final result = data['results'][0];
+          return PlaceModel(
+            placeId: result['place_id'] ?? '',
+            description: result['formatted_address'] ?? '',
+            mainText: result['name'] ?? result['formatted_address'] ?? 'Vị trí hiện tại',
+            secondaryText: result['formatted_address'] ?? '',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error Reverse Geocoding: $e');
+    }
+    return null;
+  }
+
   /// Lấy tọa độ chi tiết từ Place ID
   Future<Map<String, double>?> getPlaceDetail(String placeId) async {
     final url =
@@ -89,19 +113,27 @@ class SearchProvider extends ChangeNotifier {
 
   Future<void> loadSearchHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    _searchHistory = prefs.getStringList('search_history') ?? [];
+    final List<String> historyStrings = prefs.getStringList('search_history') ?? [];
+    _searchHistory = historyStrings
+        .map((s) => PlaceModel.fromJson(json.decode(s)))
+        .toList();
     notifyListeners();
   }
 
-  Future<void> addToHistory(String query) async {
-    _searchHistory.remove(query);
-    _searchHistory.insert(0, query);
+  Future<void> addToHistory(PlaceModel place) async {
+    // Xóa nếu đã tồn tại (dựa trên placeId) để đưa lên đầu
+    _searchHistory.removeWhere((p) => p.placeId == place.placeId);
+    _searchHistory.insert(0, place);
+    
     if (_searchHistory.length > 10) {
       _searchHistory = _searchHistory.sublist(0, 10);
     }
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('search_history', _searchHistory);
+    final List<String> historyStrings = _searchHistory
+        .map((p) => json.encode(p.toJson()))
+        .toList();
+    await prefs.setStringList('search_history', historyStrings);
     notifyListeners();
   }
 

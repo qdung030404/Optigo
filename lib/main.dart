@@ -34,8 +34,12 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => SplashProvider()),
-        ChangeNotifierProvider(create: (_) => MapProvider()),
-        ChangeNotifierProvider(create: (_) => SearchProvider())
+        ChangeNotifierProvider(create: (_) => SearchProvider()),
+        ChangeNotifierProxyProvider<SearchProvider, MapProvider>(
+          create: (_) => MapProvider(),
+          update: (_, searchProvider, mapProvider) =>
+              mapProvider!..update(searchProvider),
+        ),
       ],
       child: ScreenUtilInit(
         designSize: Size(414, 896),

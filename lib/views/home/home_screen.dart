@@ -106,10 +106,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text('Gần đây',
                             style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
-                      ...history.map((query) => ListTile(
+                      ...history.map((place) => ListTile(
                             leading: const Icon(Icons.history),
-                            title: Text(query),
-                            onTap: () => controller.text = query,
+                            title: Text(place.mainText),
+                            subtitle: Text(place.secondaryText, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            onTap: () async {
+                              final mapProvider = context.read<MapProvider>();
+                              controller.closeView(place.description);
+                              searchProvider.addToHistory(place);
+                              
+                              final detail = await searchProvider.getPlaceDetail(place.placeId);
+                              if (detail != null && mounted) {
+                                final latLng = LatLng(detail['lat']!, detail['lng']!);
+                                mapProvider.moveCameraAndAddMarker(latLng);
+                              }
+                            },
                           )),
                       TextButton(
                         onPressed: () => searchProvider.clearHistory(),
@@ -133,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           
                           //Đóng view và lưu lịch sử
                           controller.closeView(place.description);
-                          searchProvider.addToHistory(place.description);
+                          searchProvider.addToHistory(place);
 
                           //Lấy tọa độ chi tiết
                           final detail = await searchProvider.getPlaceDetail(place.placeId);

@@ -19,4 +19,15 @@ class PlaceModel {
       secondaryText: json['structured_formatting']?['secondary_text'] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'description': description,
+      'place_id': placeId,
+      'structured_formatting': {
+        'main_text': mainText,
+        'secondary_text': secondaryText,
+      },
+    };
+  }
 }
