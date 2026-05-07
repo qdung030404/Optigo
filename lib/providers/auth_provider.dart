@@ -3,13 +3,23 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:optigo/models/user_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum AuthStatus { initial, loading, codeSent, verifying, authenticated, unregistered , error}
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
+  
+  // Helper để lấy Supabase client với Firebase token
+  SupabaseClient get _authenticatedSupabase {
+    // Lưu ý: Trong thực tế, bạn nên cập nhật token này định kỳ
+    // Ở đây ta sử dụng client hiện tại nhưng sẽ truyền token vào headers mỗi khi gọi
+    return _supabase;
+  }
+
   AuthProvider({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
 
   AuthStatus _status = AuthStatus.initial;
@@ -112,10 +122,21 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.loading;
       notifyListeners();
 
-      await FirebaseFirestore.instance.collection('users').doc(_user!.uid).set({
+      // Lấy ID Token từ Firebase
+      final idToken = await _auth.currentUser?.getIdToken();
+
+      // Lưu vào Supabase profiles với JWT của Firebase
+      await SupabaseClient(
+        dotenv.env['SUPABASE_URL']!,
+        dotenv.env['SUPABASE_ANON_KEY']!,
+        headers: {'Authorization': 'Bearer $idToken'},
+      ).from('profiles').upsert({
+        'id': _user!.uid,
         'user_name': name,
-        'phone_number': _user!.phoneNumber,
+        'phone': _user!.phoneNumber,
+        'updated_at': DateTime.now().toIso8601String(),
       });
+
       _user = UserModel(
         uid: _user!.uid,
         userName: name,
@@ -125,6 +146,7 @@ class AuthProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
+      debugPrint("Lỗi cập nhật profile: $e");
       errorText = e.toString();
       _status = AuthStatus.error;
       notifyListeners();
@@ -140,12 +162,25 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _handleUserSignIn(UserCredential userCredential) async {
     final String uid = userCredential.user?.uid ?? '';
+    final idToken = await userCredential.user?.getIdToken();
 
-    DocumentSnapshot userDoc =
-        await _firestore.collection('users').doc(uid).get();
+    // Đọc thông tin từ Supabase với JWT của Firebase
+    final response = await SupabaseClient(
+      dotenv.env['SUPABASE_URL']!,
+      dotenv.env['SUPABASE_ANON_KEY']!,
+      headers: {'Authorization': 'Bearer $idToken'},
+    ).from('profiles')
+        .select()
+        .eq('id', uid)
+        .maybeSingle();
 
-    if (userDoc.exists) {
-      _user = UserModel.formMap(userDoc.data() as Map<String, dynamic>, uid);
+    if (response != null) {
+      // Chuyển đổi dữ liệu từ Supabase (key snake_case) sang UserModel
+      _user = UserModel(
+        uid: uid,
+        userName: response['user_name'] ?? '',
+        phoneNumber: response['phone'] ?? '', // Đổi từ phone_number sang phone
+      );
       _status = AuthStatus.authenticated;
     } else {
       _user = UserModel(
