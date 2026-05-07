@@ -30,6 +30,12 @@ class MapProvider extends ChangeNotifier {
   LatLng? currentLatLng;
   LatLng? destinationLatLng;
 
+  /// Cập nhật vị trí hiện tại và thông báo cho listeners
+  void setCurrentLocation(LatLng latLng) {
+    currentLatLng = latLng;
+    notifyListeners();
+  }
+
 
   bool get locating => mapType == MapType.locating;
   String? get locationError => _locationError;
@@ -50,14 +56,13 @@ class MapProvider extends ChangeNotifier {
 
   void onMapCreated(MapLibreMapController controller) {
     _controller = controller;
-    _isLineAdded = false; // Reset trạng thái vẽ đường khi tạo map mới
+    _isLineAdded = false;
     notifyListeners();
   }
 
   Future<void> onStyleLoaded() async {
     _isStyleLoaded = true;
-    
-    // Nạp icon custom từ assets vào bản đồ
+
     try {
       final ByteData bytes = await rootBundle.load("assets/images/locationEnd.png");
       final Uint8List list = bytes.buffer.asUint8List();
@@ -162,6 +167,22 @@ class MapProvider extends ChangeNotifier {
     );
     notifyListeners();
   }
+
+  /// Xóa điểm đến và đường đi
+  void clearDestination() {
+    if (_destinationPoint != null) {
+      _controller?.removeSymbol(_destinationPoint!);
+      _destinationPoint = null;
+    }
+    destinationLatLng = null;
+    if (_isLineAdded) {
+      _controller?.setGeoJsonSource(_lineSourceId, {
+        "type": "FeatureCollection",
+        "features": [],
+      });
+    }
+    notifyListeners();
+  }
   Future<void> getDirection() async {
     try {
       if (currentLatLng != null && destinationLatLng != null) {
@@ -250,9 +271,9 @@ class MapProvider extends ChangeNotifier {
           northeast: LatLng(maxLat, maxLng),
         ),
         left: 64,
-        top: 150, // Tránh bị AppBar che
+        top: 200, // Tránh bị AppBar che
         right: 64,
-        bottom: 100, // Tránh bị các nút bấm che
+        bottom: 250, // Tránh bị các nút bấm che
       ),
     );
   }

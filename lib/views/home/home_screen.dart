@@ -1,12 +1,15 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:optigo/models/place_model.dart';
 import 'package:optigo/models/user_model.dart';
 import 'package:optigo/providers/auth_provider.dart';
 import 'package:optigo/providers/map_provider.dart';
 import 'package:optigo/providers/search_provider.dart';
 import 'package:optigo/views/home/widget/build_drawer.dart';
 import 'package:optigo/views/home/widget/build_map.dart';
+import 'package:optigo/views/home/widget/location_input_box.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,36 +20,53 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _initialPosition = CameraPosition(
-    target: LatLng(10.7769, 106.7009), // TP. Hồ Chí Minh
-    zoom: 12,
-  );
   Timer? timeDebounce;
-  final SearchController _searchController = SearchController();
+  final SearchController searchController = SearchController();
 
   @override
   void initState() {
     super.initState();
     // Lắng nghe sự thay đổi của text để gọi API tìm kiếm
-    _searchController.addListener(_onSearchChanged);
+    searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
+    searchController.removeListener(_onSearchChanged);
+    searchController.dispose();
     timeDebounce?.cancel();
     super.dispose();
   }
 
   void _onSearchChanged() {
-    if(timeDebounce?.isActive ?? false) timeDebounce!.cancel();
+    if (timeDebounce?.isActive ?? false) timeDebounce!.cancel();
     timeDebounce = Timer(const Duration(milliseconds: 500), () {
-      if (_searchController.text.isNotEmpty) {
+      if (mounted) {
+        setState(() {}); // Đảm bảo AppBar cập nhật khi text thay đổi
+      }
+      if (searchController.text.isNotEmpty) {
         if (!mounted) return;
-        context.read<SearchProvider>().searchPlace(_searchController.text);
+        context.read<SearchProvider>().searchPlace(searchController.text);
       }
     });
+  }
+
+  void searchToggle(
+    BuildContext context,
+    PlaceModel place,
+    SearchController controller,
+  ) async {
+    final searchProvider = context.read<SearchProvider>();
+    final mapProvider = context.read<MapProvider>();
+    controller.closeView(place.description);
+    searchProvider.addToHistory(place);
+
+    final detail = await searchProvider.getPlaceDetail(place.placeId);
+    if (detail != null && mounted) {
+      final latLng = LatLng(detail['lat']!, detail['lng']!);
+      await mapProvider.moveCameraAndAddMarker(latLng);
+      mapProvider.getDirection();
+    }
   }
 
   @override
@@ -83,15 +103,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: SearchAnchor(
-                searchController: _searchController,
+                searchController: searchController,
                 builder: (context, controller) {
                   return IconButton(
-                    icon: const Icon(Icons.search, color: Colors.black),
-                    onPressed: () => controller.openView(),
+                    icon: Icon(
+                      controller.text.isEmpty ? Icons.search : Icons.clear,
+                      color: Colors.black,
+                    ),
+                    onPressed: () {
+                      if (controller.text.isEmpty) {
+                        controller.openView();
+                      } else {
+                        final mapProvider = context.read<MapProvider>();
+                        controller.clear();
+                        mapProvider.clearDestination();
+                        mapProvider.goToCurrentLocation();
+                      }
+                    },
                   );
                 },
                 suggestionsBuilder: (context, controller) {
-                  // Lắng nghe SearchProvider để cập nhật gợi ý
                   final searchProvider = context.read<SearchProvider>();
                   final results = searchProvider.searchResults;
 
@@ -103,25 +134,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     return [
                       const Padding(
                         padding: EdgeInsets.all(16.0),
-                        child: Text('Gần đây',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'Gần đây',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      ...history.map((place) => ListTile(
-                            leading: const Icon(Icons.history),
-                            title: Text(place.mainText),
-                            subtitle: Text(place.secondaryText, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            onTap: () async {
-                              final mapProvider = context.read<MapProvider>();
-                              controller.closeView(place.description);
-                              searchProvider.addToHistory(place);
-                              
-                              final detail = await searchProvider.getPlaceDetail(place.placeId);
-                              if (detail != null && mounted) {
-                                final latLng = LatLng(detail['lat']!, detail['lng']!);
-                                mapProvider.moveCameraAndAddMarker(latLng);
-                              }
-                            },
-                          )),
+                      ...history.map(
+                        (place) => listTileItem(
+                          () => searchToggle(context, place, controller),
+                          Icons.history,
+                          place,
+                          Colors.grey,
+                        ),
+                      ),
                       TextButton(
                         onPressed: () => searchProvider.clearHistory(),
                         child: const Text('Xóa lịch sử'),
@@ -130,31 +155,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
 
                   if (results.isEmpty && !searchProvider.isSearching) {
-                    return [const ListTile(title: Text('Không tìm thấy kết quả'))];
+                    return [
+                      const ListTile(title: Text('Không tìm thấy kết quả')),
+                    ];
                   }
-
-                  return results.map((place) => ListTile(
-                        leading: const Icon(Icons.location_on_outlined,
-                            color: Colors.blue),
-                        title: Text(place.mainText),
-                        subtitle: Text(place.secondaryText),
-                        onTap: () async {
-                          // Capture MapProvider trước khi await và trước khi đóng view
-                          final mapProvider = context.read<MapProvider>();
-                          
-                          //Đóng view và lưu lịch sử
-                          controller.closeView(place.description);
-                          searchProvider.addToHistory(place);
-
-                          //Lấy tọa độ chi tiết
-                          final detail = await searchProvider.getPlaceDetail(place.placeId);
-                          if (detail != null && mounted) {
-                            final latLng = LatLng(detail['lat']!, detail['lng']!);
-                            //Sử dụng provider đã capture
-                            mapProvider.moveCameraAndAddMarker(latLng);
-                          }
-                        },
-                      )).toList();
+                  return results
+                      .map(
+                        (place) => listTileItem(
+                          () => searchToggle(context, place, controller),
+                          Icons.location_on_outlined,
+                          place,
+                          Colors.red,
+                        ),
+                      )
+                      .toList();
                 },
               ),
             ),
@@ -162,7 +176,32 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       drawer: BuildDrawer(user: user),
-      body: BuildMap(),
+      body: Stack(
+        children: [
+          BuildMap(),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 60,
+            left: 16,
+            right: 16,
+            child: (searchController.text.isNotEmpty)
+                ? LocationInputBox(destinationController: searchController)
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget listTileItem(VoidCallback onTap, IconData icon, PlaceModel place, Color color) {
+    return ListTile(
+      leading: Icon(icon, color: color,),
+      title: Text(place.mainText),
+      subtitle: Text(
+        place.secondaryText,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      onTap: onTap,
     );
   }
 }

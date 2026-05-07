@@ -22,13 +22,12 @@ class _BuildMapState extends State<BuildMap> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mapProvider.locationError != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(mapProvider.locationError!)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(mapProvider.locationError!)));
         mapProvider.clearLocationError();
       }
     });
-
     return Stack(
       children: [
         MapLibreMap(
@@ -43,34 +42,6 @@ class _BuildMapState extends State<BuildMap> {
         ),
         if (!mapProvider.styleLoaded)
           const Center(child: CircularProgressIndicator()),
-        Positioned(
-          bottom: 32,
-          left: 16,
-          child: (mapProvider.currentLatLng != null && mapProvider.destinationLatLng != null)
-              ? ElevatedButton(
-                  onPressed: () => mapProvider.getDirection(),
-                  child: const Text('Chỉ đường'),
-                )
-              : const SizedBox.shrink(),
-        ),
-        Positioned(
-          bottom: 32,
-          right: 16,
-          child: FloatingActionButton(
-            heroTag: 'my_location',
-            backgroundColor: Colors.white,
-            onPressed: mapProvider.locating
-                ? null
-                : () => mapProvider.goToCurrentLocation(),
-            child: mapProvider.locating
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location, color: Colors.blue),
-          ),
-        ),
       ],
     );
   }
