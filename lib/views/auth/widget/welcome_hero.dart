@@ -24,7 +24,7 @@ class WelcomeHero extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.teal.withOpacity(0.1),
+                      color: Colors.teal.withValues(alpha: 0.1),
                       width: 1.5,
                     ),
                   ),
@@ -36,7 +36,7 @@ class WelcomeHero extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.teal.withOpacity(0.2),
+                      color: Colors.teal.withValues(alpha: 0.2),
                       width: 1.5,
                     ),
                   ),
@@ -138,7 +138,7 @@ class WelcomeHero extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               spreadRadius: 2,
             )
