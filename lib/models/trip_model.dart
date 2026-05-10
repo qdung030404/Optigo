@@ -1,0 +1,60 @@
+class TripModel {
+  final String id;
+  final String driverId;
+  final String originName;
+  final String destinationName;
+  final double originLat;
+  final double originLng;
+  final double destinationLat;
+  final double destinationLng;
+  final double price;
+  final int availableSeats;
+  final DateTime departureTime;
+  final String status;
+
+  TripModel({
+    required this.id,
+    required this.driverId,
+    required this.originName,
+    required this.destinationName,
+    required this.originLat,
+    required this.originLng,
+    required this.destinationLat,
+    required this.destinationLng,
+    required this.price,
+    required this.availableSeats,
+    required this.departureTime,
+    required this.status,
+  });
+
+  factory TripModel.fromJson(Map<String, dynamic> map) {
+    return TripModel(
+      id: map['id'] ?? '',
+      driverId: map['driver_id'] ?? '',
+      originName: map['origin_name'] ?? '',
+      destinationName: map['destination_name'] ?? '',
+      originLat: (map['origin_lat'] as num?)?.toDouble() ?? 0.0,
+      originLng: (map['origin_lng']as num?)?.toDouble() ?? 0.0,
+      destinationLat: (map['destination_lat'] as num?)?.toDouble() ?? 0.0,
+      destinationLng: (map['destination_lng'] as num?)?.toDouble() ?? 0.0,
+      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      availableSeats: map['available_seats'] ?? 0,
+      departureTime: map['departure_time'] != null ? DateTime.parse(map['departure_time']) : DateTime.now() ,
+      status: map['status'] ?? 'open',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'origin_lat': originLat,
+      'origin_lng': originLng,
+      'destination_lat': destinationLat,
+      'destination_lng': destinationLng,
+      'price': price,
+      'available_seats': availableSeats,
+      'departure_time': departureTime.toIso8601String(),
+      'status': status,
+    };
+  }
+}
