@@ -3,13 +3,17 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:optigo/providers/map_provider.dart';
 import 'package:optigo/providers/search_provider.dart';
 import 'package:optigo/views/home/widget/search_location_widget.dart';
+import 'package:optigo/models/place_model.dart';
 import 'package:provider/provider.dart';
 
 class LocationInputBox extends StatefulWidget {
-  final SearchController? destinationController;
+  final String? initialDestinationText;
+  final Function(PlaceModel)? onDestinationSelected;
+
   const LocationInputBox({
     super.key,
-    this.destinationController
+    this.initialDestinationText,
+    this.onDestinationSelected,
   });
 
   @override
@@ -58,8 +62,11 @@ class _LocationInputBoxState extends State<LocationInputBox> {
                 const Divider(height: 1, color: Colors.grey),
                 SearchLocationWidget(
                   hintText: 'Nhập điểm đến',
-                  searchController: widget.destinationController,
+                  initialText: widget.initialDestinationText,
                   onSelected: (place) async {
+                    if (widget.onDestinationSelected != null) {
+                      widget.onDestinationSelected!(place);
+                    }
                     final searchProvider = context.read<SearchProvider>();
                     final mapProvider = context.read<MapProvider>();
                     final detail = await searchProvider.getPlaceDetail(
