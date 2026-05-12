@@ -1,33 +1,42 @@
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:optigo/models/trip_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TripProvider extends ChangeNotifier{
-  final _supabase = Supabase.instance.client;
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
+  bool _isNow = false;
+  bool _isTimeSelected = false;
+  DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = TimeOfDay.now();
+  String _note = "";
 
-  Future<void> createTrip(TripModel trip) async {
-    _isLoading = true;
+  bool get isNow => _isNow;
+  DateTime get selectedDate => _selectedDate;
+  TimeOfDay get selectedTime => _selectedTime;
+  bool get isTimeSelected => _isTimeSelected;
+  String get note => _note;
+
+  void setDate(DateTime date) {
+    _selectedDate = date;
     notifyListeners();
-    try{
-      final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+  }
+  void setTime(TimeOfDay time) {
+    _selectedTime = time;
+    notifyListeners();
+  }
+  void setNote(String note) {
+    _note = note;
+    notifyListeners();
+  }
+  void setIsNow(bool isNow) {
+    _isNow = isNow;
+    notifyListeners();
+  }
+  void confirmTime() {
+    _isTimeSelected = true;
+    notifyListeners();
+  }
 
-      await SupabaseClient(
-        dotenv.env['SUPABASE_URL']!,
-        dotenv.env['SUPABASE_ANON_KEY']!,
-        headers: {'Authorization': 'Bearer $idToken'},
-      ).from('trips').insert(
-        trip.toMap(),
-      );
-
-    }catch(e){
-      debugPrint("Lỗi tạo chuyến đi: $e");
-    }finally{
-      _isLoading = false;
-      notifyListeners();
-    }
+  void resetTime() {
+    _isTimeSelected = false;
+    notifyListeners();
   }
 }

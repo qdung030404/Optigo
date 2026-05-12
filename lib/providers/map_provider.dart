@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:optigo/providers/search_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 enum MapType { initial, locating, locationError }
 
@@ -89,18 +90,14 @@ class MapProvider extends ChangeNotifier {
         return;
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
+      // Kiểm tra quyền truy cập vị trí (Dùng permission_handler cho đồng bộ)
+      var status = await Permission.location.status;
+      if (!status.isGranted) {
+        status = await Permission.location.request();
+        if (!status.isGranted) {
           _locationError = 'Quyền truy cập vị trí bị từ chối.';
           return;
         }
-      }
-      if (permission == LocationPermission.deniedForever) {
-        _locationError =
-            'Quyền vị trí bị chặn vĩnh viễn. Vui lòng vào Cài đặt để cấp quyền.';
-        return;
       }
 
       final position = await Geolocator.getCurrentPosition(
