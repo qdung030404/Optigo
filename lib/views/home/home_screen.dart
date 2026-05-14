@@ -10,6 +10,7 @@ import 'package:optigo/providers/search_provider.dart';
 import 'package:optigo/views/home/widget/build_drawer.dart';
 import 'package:optigo/views/home/widget/build_map.dart';
 import 'package:optigo/views/home/widget/location_input_box.dart';
+import 'package:optigo/views/home/widget/booking_bottomsheet/booking_bottomsheet.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   Timer? timeDebounce;
   final SearchController searchController = SearchController();
+  final SearchController originController = SearchController();
 
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     searchController.removeListener(_onSearchChanged);
     searchController.dispose();
+    originController.dispose();
     timeDebounce?.cancel();
     super.dispose();
   }
@@ -184,7 +187,19 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 16,
             right: 16,
             child: (searchController.text.isNotEmpty)
-                ? LocationInputBox(destinationController: searchController)
+                ? LocationInputBox(
+                    destinationController: searchController,
+                    originController: originController,
+                    initialOriginText: context.read<MapProvider>().currentAddress,
+                  )
+                : const SizedBox.shrink(),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: (searchController.text.isNotEmpty)
+                ? const BookingBottomsheet()
                 : const SizedBox.shrink(),
           ),
         ],

@@ -3,13 +3,23 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:optigo/providers/map_provider.dart';
 import 'package:optigo/providers/search_provider.dart';
 import 'package:optigo/views/home/widget/search_location_widget.dart';
+import 'package:optigo/models/place_model.dart';
 import 'package:provider/provider.dart';
 
 class LocationInputBox extends StatefulWidget {
+  final String? initialDestinationText;
+  final String? initialOriginText;
+  final Function(PlaceModel)? onDestinationSelected;
   final SearchController? destinationController;
+  final SearchController? originController;
+
   const LocationInputBox({
     super.key,
-    this.destinationController
+    this.initialDestinationText,
+    this.initialOriginText,
+    this.onDestinationSelected,
+    this.destinationController,
+    this.originController,
   });
 
   @override
@@ -42,6 +52,8 @@ class _LocationInputBoxState extends State<LocationInputBox> {
               children: [
                 SearchLocationWidget(
                   hintText: 'Vị trí của bạn',
+                  searchController: widget.originController,
+                  initialText: widget.initialOriginText,
                   onSelected: (place) async {
                     final searchProvider = context.read<SearchProvider>();
                     final mapProvider = context.read<MapProvider>();
@@ -52,6 +64,7 @@ class _LocationInputBoxState extends State<LocationInputBox> {
                       mapProvider.setCurrentLocation(
                         LatLng(detail['lat']!, detail['lng']!),
                       );
+                      mapProvider.getDirection();
                     }
                   },
                 ),
@@ -59,7 +72,11 @@ class _LocationInputBoxState extends State<LocationInputBox> {
                 SearchLocationWidget(
                   hintText: 'Nhập điểm đến',
                   searchController: widget.destinationController,
+                  initialText: widget.initialDestinationText,
                   onSelected: (place) async {
+                    if (widget.onDestinationSelected != null) {
+                      widget.onDestinationSelected!(place);
+                    }
                     final searchProvider = context.read<SearchProvider>();
                     final mapProvider = context.read<MapProvider>();
                     final detail = await searchProvider.getPlaceDetail(

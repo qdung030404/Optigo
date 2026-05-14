@@ -3,24 +3,55 @@ import 'package:provider/provider.dart';
 import 'package:optigo/providers/search_provider.dart';
 import 'package:optigo/models/place_model.dart';
 
-class SearchLocationWidget extends StatelessWidget {
+class SearchLocationWidget extends StatefulWidget {
   final String hintText;
   final Function(PlaceModel)? onSelected;
   final SearchController? searchController;
+  final String? initialText;
 
   const SearchLocationWidget({
     super.key,
     required this.hintText,
     this.onSelected,
     this.searchController,
+    this.initialText,
   });
+
+  @override
+  State<SearchLocationWidget> createState() => _SearchLocationWidgetState();
+}
+
+class _SearchLocationWidgetState extends State<SearchLocationWidget> {
+  SearchController? _internalController;
+
+  SearchController get _effectiveController =>
+      widget.searchController ?? _internalController!;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.searchController == null) {
+      _internalController = SearchController();
+      if (widget.initialText != null) {
+        _internalController!.text = widget.initialText!;
+      }
+    } else if (widget.initialText != null) {
+      widget.searchController!.text = widget.initialText!;
+    }
+  }
+
+  @override
+  void dispose() {
+    _internalController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<SearchProvider>(
       builder: (context, searchProvider, child) {
         return SearchAnchor(
-          searchController: searchController,
+          searchController: _effectiveController,
           builder: (context, controller) {
             return TextField(
               controller: controller,
@@ -33,7 +64,7 @@ class SearchLocationWidget extends StatelessWidget {
                 searchProvider.searchPlace(value);
               },
               decoration: InputDecoration(
-                hintText: hintText,
+                hintText: widget.hintText,
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 10),
               ),
@@ -49,10 +80,9 @@ class SearchLocationWidget extends StatelessWidget {
               ];
             }
 
-            if (searchProvider.searchResults.isEmpty && controller.text.isNotEmpty) {
-              return const [
-                ListTile(title: Text('Không tìm thấy kết quả'))
-              ];
+            if (searchProvider.searchResults.isEmpty &&
+                controller.text.isNotEmpty) {
+              return const [ListTile(title: Text('Không tìm thấy kết quả'))];
             }
 
             return searchProvider.searchResults.map((place) {
@@ -61,8 +91,8 @@ class SearchLocationWidget extends StatelessWidget {
                 subtitle: Text(place.secondaryText),
                 onTap: () {
                   controller.closeView(place.description);
-                  if (onSelected != null) {
-                    onSelected!(place);
+                  if (widget.onSelected != null) {
+                    widget.onSelected!(place);
                   }
                 },
               );

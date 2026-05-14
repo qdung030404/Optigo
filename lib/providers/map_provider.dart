@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:optigo/providers/search_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 enum MapType { initial, locating, locationError }
 
@@ -29,6 +30,11 @@ class MapProvider extends ChangeNotifier {
   Symbol? _destinationPoint;
   LatLng? currentLatLng;
   LatLng? destinationLatLng;
+  String? _currentAddress;
+  String? get currentAddress => _currentAddress;
+  List<LatLng> _userRoutePoints = [];
+
+  List<LatLng> get userRoutePoints => _userRoutePoints;
 
   /// Cập nhật vị trí hiện tại và thông báo cho listeners
   void setCurrentLocation(LatLng latLng) {
@@ -89,18 +95,14 @@ class MapProvider extends ChangeNotifier {
         return;
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
+      // Kiểm tra quyền truy cập vị trí (Dùng permission_handler cho đồng bộ)
+      var status = await Permission.location.status;
+      if (!status.isGranted) {
+        status = await Permission.location.request();
+        if (!status.isGranted) {
           _locationError = 'Quyền truy cập vị trí bị từ chối.';
           return;
         }
-      }
-      if (permission == LocationPermission.deniedForever) {
-        _locationError =
-            'Quyền vị trí bị chặn vĩnh viễn. Vui lòng vào Cài đặt để cấp quyền.';
-        return;
       }
 
       final position = await Geolocator.getCurrentPosition(
@@ -127,7 +129,8 @@ class MapProvider extends ChangeNotifier {
           position.longitude,
         );
         if (currentPlace != null) {
-          debugPrint("Địa chỉ hiện tại: ${currentPlace.description}");
+          _currentAddress = currentPlace.description;
+          debugPrint("Địa chỉ hiện tại: $_currentAddress");
         }
       }
     } catch (e) {
@@ -175,6 +178,7 @@ class MapProvider extends ChangeNotifier {
       _destinationPoint = null;
     }
     destinationLatLng = null;
+    _userRoutePoints = [];
     if (_isLineAdded) {
       _controller?.setGeoJsonSource(_lineSourceId, {
         "type": "FeatureCollection",
@@ -196,10 +200,16 @@ class MapProvider extends ChangeNotifier {
           // Kiểm tra list routes có dữ liệu hay không trước khi truy cập
           if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
             var route = data['routes'][0]['overview_polyline']['points'];
+            print("--- BAT DAU CHUOI POLYLINE ---");
+            final pattern = RegExp('.{1,800}'); // Cắt mỗi đoạn 800 ký tự
+            pattern.allMatches(route).forEach((match) => print(match.group(0)));
+            print("--- KET THUC CHUOI POLYLINE ---");
             List<PointLatLng> result = PolylinePoints.decodePolyline(route);
+            _userRoutePoints = result.map((point) => LatLng(point.latitude, point.longitude)).toList();
             List<List<double>> coordinates = result.map((point) => [point.longitude, point.latitude]).toList();
             _drawLine(coordinates);
           }
+
         }
       }
     } catch (e) {

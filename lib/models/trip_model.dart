@@ -7,6 +7,8 @@ class TripModel {
   final double originLng;
   final double destinationLat;
   final double destinationLng;
+  final String routePolyline;
+  final double? overlapPercentage;
   final double price;
   final int availableSeats;
   final DateTime departureTime;
@@ -21,6 +23,8 @@ class TripModel {
     required this.originLng,
     required this.destinationLat,
     required this.destinationLng,
+    required this.routePolyline,
+    this.overlapPercentage,
     required this.price,
     required this.availableSeats,
     required this.departureTime,
@@ -37,6 +41,7 @@ class TripModel {
       originLng: (map['origin_lng']as num?)?.toDouble() ?? 0.0,
       destinationLat: (map['destination_lat'] as num?)?.toDouble() ?? 0.0,
       destinationLng: (map['destination_lng'] as num?)?.toDouble() ?? 0.0,
+      routePolyline: map['route_polyline'] ?? '',
       price: (map['price'] as num?)?.toDouble() ?? 0.0,
       availableSeats: map['available_seats'] ?? 0,
       departureTime: map['departure_time'] != null ? DateTime.parse(map['departure_time']) : DateTime.now() ,
@@ -51,6 +56,7 @@ class TripModel {
       'origin_lng': originLng,
       'destination_lat': destinationLat,
       'destination_lng': destinationLng,
+      'route_polyline': routePolyline,
       'price': price,
       'available_seats': availableSeats,
       'departure_time': departureTime.toIso8601String(),
