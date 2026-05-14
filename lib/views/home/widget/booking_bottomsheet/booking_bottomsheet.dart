@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:optigo/config/routes.dart';
+import 'package:optigo/providers/map_provider.dart';
 import 'package:optigo/providers/trip_provider.dart';
-import 'package:optigo/views/home/widget/booking_bottomsheet/travel_time_selector.dart';
+import 'package:optigo/views/home/widget/booking_bottomsheet/travel_selector_widget/travel_time_selector.dart';
+import 'package:optigo/views/home/widget/booking_bottomsheet/trip_time.dart';
 import 'package:provider/provider.dart';
+
+import 'number_of_passenger.dart';
+import 'payment_method.dart';
 
 class BookingBottomsheet extends StatefulWidget {
   const BookingBottomsheet({super.key});
@@ -11,30 +19,11 @@ class BookingBottomsheet extends StatefulWidget {
 }
 
 class _BookingBottomsheetState extends State<BookingBottomsheet> {
-  Map<String, dynamic>? _selectedTravelTime;
-
-  String _displayTime(TripProvider tripProvider) {
-    if (!tripProvider.isTimeSelected) return 'Vui lòng chọn thời gian di chuyển';
-    if (tripProvider.isNow) return "Ngay bây giờ";
-
-    final date = tripProvider.selectedDate;
-    final time = tripProvider.selectedTime;
-
-    final year = date.year.toString();
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-
-    return "$hour:$minute, $day/$month/$year";
-  }
-
   @override
   Widget build(BuildContext context) {
-    final tripProvider = context.watch<TripProvider>();
     return Container(
       padding: EdgeInsets.all(16),
-      height: MediaQuery.of(context).size.height * 0.4,
+      height: MediaQuery.of(context).size.height * 0.5,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -58,52 +47,35 @@ class _BookingBottomsheetState extends State<BookingBottomsheet> {
             ),
           ),
           const SizedBox(height: 10,),
-          Align(
-            alignment: Alignment.centerLeft,
+          TripTime(),
+          const SizedBox(height: 16),
+          NumberOfPassenger(),
+          const SizedBox(height: 16),
+          const PaymentMethod(),
+          Spacer(),
+          ElevatedButton(
+            onPressed: () {
+              final mapProvider = context.read<MapProvider>();
+              context.read<TripProvider>().findTrips(origin: mapProvider.currentLatLng!, destination: mapProvider.destinationLatLng!);
+              Navigator.pushNamed(context, Routes.tripList);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xfffedd59),
+              minimumSize: Size(double.infinity, 60.h),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
             child: Text(
-              'Thời gian di chuyển',
+              'Tìm chuyến',
               style: TextStyle(
-                fontSize: 18,
+                color: const Color(0xff176bac),
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () async {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TravelTimeSelector()),
-              );
-            },
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          _displayTime(tripProvider),
-                          style: TextStyle(
-                            color: _selectedTravelTime == null ? Colors.grey : Colors.black,
-                            fontWeight: _selectedTravelTime == null ? FontWeight.normal : FontWeight.bold,
-                          ),
-                        ),
-                        Icon(Icons.arrow_forward_ios_outlined),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )
         ]
       )
     );

@@ -94,7 +94,7 @@ class _TravelTimeSelectorState extends State<TravelTimeSelector> {
           child: Text(
             'XÁC NHẬN',
             style: TextStyle(
-              color: Colors.white,
+              color: const Color(0xff176bac),
               fontSize: 16.sp,
               fontWeight: FontWeight.bold,
             ),
