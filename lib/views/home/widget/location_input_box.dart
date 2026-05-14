@@ -8,12 +8,18 @@ import 'package:provider/provider.dart';
 
 class LocationInputBox extends StatefulWidget {
   final String? initialDestinationText;
+  final String? initialOriginText;
   final Function(PlaceModel)? onDestinationSelected;
+  final SearchController? destinationController;
+  final SearchController? originController;
 
   const LocationInputBox({
     super.key,
     this.initialDestinationText,
+    this.initialOriginText,
     this.onDestinationSelected,
+    this.destinationController,
+    this.originController,
   });
 
   @override
@@ -46,6 +52,8 @@ class _LocationInputBoxState extends State<LocationInputBox> {
               children: [
                 SearchLocationWidget(
                   hintText: 'Vị trí của bạn',
+                  searchController: widget.originController,
+                  initialText: widget.initialOriginText,
                   onSelected: (place) async {
                     final searchProvider = context.read<SearchProvider>();
                     final mapProvider = context.read<MapProvider>();
@@ -56,12 +64,14 @@ class _LocationInputBoxState extends State<LocationInputBox> {
                       mapProvider.setCurrentLocation(
                         LatLng(detail['lat']!, detail['lng']!),
                       );
+                      mapProvider.getDirection();
                     }
                   },
                 ),
                 const Divider(height: 1, color: Colors.grey),
                 SearchLocationWidget(
                   hintText: 'Nhập điểm đến',
+                  searchController: widget.destinationController,
                   initialText: widget.initialDestinationText,
                   onSelected: (place) async {
                     if (widget.onDestinationSelected != null) {

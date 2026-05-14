@@ -30,6 +30,11 @@ class MapProvider extends ChangeNotifier {
   Symbol? _destinationPoint;
   LatLng? currentLatLng;
   LatLng? destinationLatLng;
+  String? _currentAddress;
+  String? get currentAddress => _currentAddress;
+  List<LatLng> _userRoutePoints = [];
+
+  List<LatLng> get userRoutePoints => _userRoutePoints;
 
   /// Cập nhật vị trí hiện tại và thông báo cho listeners
   void setCurrentLocation(LatLng latLng) {
@@ -124,7 +129,8 @@ class MapProvider extends ChangeNotifier {
           position.longitude,
         );
         if (currentPlace != null) {
-          debugPrint("Địa chỉ hiện tại: ${currentPlace.description}");
+          _currentAddress = currentPlace.description;
+          debugPrint("Địa chỉ hiện tại: $_currentAddress");
         }
       }
     } catch (e) {
@@ -172,6 +178,7 @@ class MapProvider extends ChangeNotifier {
       _destinationPoint = null;
     }
     destinationLatLng = null;
+    _userRoutePoints = [];
     if (_isLineAdded) {
       _controller?.setGeoJsonSource(_lineSourceId, {
         "type": "FeatureCollection",
@@ -193,10 +200,16 @@ class MapProvider extends ChangeNotifier {
           // Kiểm tra list routes có dữ liệu hay không trước khi truy cập
           if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
             var route = data['routes'][0]['overview_polyline']['points'];
+            print("--- BAT DAU CHUOI POLYLINE ---");
+            final pattern = RegExp('.{1,800}'); // Cắt mỗi đoạn 800 ký tự
+            pattern.allMatches(route).forEach((match) => print(match.group(0)));
+            print("--- KET THUC CHUOI POLYLINE ---");
             List<PointLatLng> result = PolylinePoints.decodePolyline(route);
+            _userRoutePoints = result.map((point) => LatLng(point.latitude, point.longitude)).toList();
             List<List<double>> coordinates = result.map((point) => [point.longitude, point.latitude]).toList();
             _drawLine(coordinates);
           }
+
         }
       }
     } catch (e) {
