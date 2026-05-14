@@ -7,11 +7,13 @@ import 'package:optigo/providers/auth_provider.dart';
 import 'package:optigo/providers/map_provider.dart';
 import 'package:optigo/providers/search_provider.dart';
 import 'package:optigo/providers/splash_provider.dart';
+import 'package:optigo/providers/trip_provider.dart';
 import 'package:optigo/views/auth/login_screen.dart';
 import 'package:optigo/views/auth/otp_screen.dart';
 import 'package:optigo/views/auth/set_user_name.dart';
 import 'package:optigo/views/home/home_screen.dart';
 import 'package:optigo/views/splash_screen.dart';
+import 'package:optigo/views/trip/trip_list_view.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'firebase_options.dart';
@@ -45,6 +47,7 @@ class MyApp extends StatelessWidget {
           update: (_, searchProvider, mapProvider) =>
               mapProvider!..update(searchProvider),
         ),
+        ChangeNotifierProvider(create: (_) => TripProvider()),
       ],
       child: ScreenUtilInit(
         designSize: Size(414, 896),
@@ -57,9 +60,10 @@ class MyApp extends StatelessWidget {
             routes: {
               Routes.splash: (ctx) => SplashScreen(),
               Routes.login: (ctx) => LoginScreen(),
-              Routes.otp: (ctx) => OtpScreen(),       // <-- Thêm dòng này
+              Routes.otp: (ctx) => OtpScreen(),
               Routes.setUserName: (ctx) => SetUserName(),
               Routes.home: (ctx) => HomeScreen(),
+              Routes.tripList: (ctx) => TripListView(),
             },
           );
         }),
