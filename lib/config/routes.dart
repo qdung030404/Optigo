@@ -7,4 +7,5 @@ class Routes {
   static const map = 'map';
   static const profile = 'profile';
   static const tripList = 'trip_list';
+  static const tripDetail = 'trip_detail';
 }

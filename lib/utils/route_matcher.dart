@@ -47,16 +47,33 @@ class RouteMatcher {
         dropOffIndex = i;
       }
     }
-    print("Khoảng cách đón gần nhất: $minPickUpDistance mét");
-    print("Khoảng cách trả gần nhất: $minDropOffDistance mét");
-    print("Index đón: $pickUpIndex, Index trả: $dropOffIndex");
-    print("Điểm đầu tiên của tài xế: ${driverRoute.first}");
-    print("Điểm cuối thực tế của tài xế: ${driverRoute.last}");
-    print("Điểm đón bạn đang yêu cầu: $userOrigin");
-    print("Điểm đến bạn đang yêu cầu: $userDestination");
     if(pickUpIndex != -1 && dropOffIndex != -1 && pickUpIndex < dropOffIndex){
       return 100.0;
     }
     return 0.0;
+  }
+  static List<Map<String, dynamic>> getPickUpPoint({
+    required LatLng userOrigin,
+    required List<LatLng> driverRoute,
+    double radiusMeters = 20000.0,
+  }){
+    List<Map<String, dynamic>> pickUpPoints = [];
+    for(int i = 0; i < driverRoute.length; i++){
+      double distance = Geolocator.distanceBetween(
+        userOrigin.latitude,
+        userOrigin.longitude,
+        driverRoute[i].latitude,
+        driverRoute[i].longitude,
+      );
+      if(distance <= radiusMeters){
+        pickUpPoints.add({
+          'point': driverRoute[i],
+          'distance': distance,
+        });
+      }
+    }
+    pickUpPoints.sort((a, b) => a['distance'].compareTo(b['distance']));
+
+    return pickUpPoints.take(5).toList();
   }
 }
