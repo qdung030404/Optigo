@@ -13,6 +13,7 @@ import 'package:optigo/views/auth/otp_screen.dart';
 import 'package:optigo/views/auth/set_user_name.dart';
 import 'package:optigo/views/home/home_screen.dart';
 import 'package:optigo/views/splash_screen.dart';
+import 'package:optigo/views/trip/trip_detail_screen.dart';
 import 'package:optigo/views/trip/trip_list_view.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -64,6 +65,7 @@ class MyApp extends StatelessWidget {
               Routes.setUserName: (ctx) => SetUserName(),
               Routes.home: (ctx) => HomeScreen(),
               Routes.tripList: (ctx) => TripListView(),
+              Routes.tripDetail: (ctx) => TripDetailScreen(),
             },
           );
         }),

@@ -15,6 +15,7 @@ class TripProvider extends ChangeNotifier {
   String _paymentMethod = "Tiền mặt";
   List<TripModel> _trips = [];
   bool _isLoading = false;
+  bool _showBookingBottomSheet = true;
 
   final SearchController searchController = SearchController();
 
@@ -37,6 +38,12 @@ class TripProvider extends ChangeNotifier {
   String get note => _note;
   List<TripModel> get trips => _trips;
   bool get isLoading => _isLoading;
+  bool get showBookingBottomSheet => _showBookingBottomSheet;
+
+  void setShowBookingBottomSheet(bool value) {
+    _showBookingBottomSheet = value;
+    notifyListeners();
+  }
 
   void setDate(DateTime date) {
     _selectedDate = date;
