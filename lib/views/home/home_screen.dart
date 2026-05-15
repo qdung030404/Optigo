@@ -7,6 +7,7 @@ import 'package:optigo/models/user_model.dart';
 import 'package:optigo/providers/auth_provider.dart';
 import 'package:optigo/providers/map_provider.dart';
 import 'package:optigo/providers/search_provider.dart';
+import 'package:optigo/providers/trip_provider.dart';
 import 'package:optigo/views/home/widget/build_drawer.dart';
 import 'package:optigo/views/home/widget/build_map.dart';
 import 'package:optigo/views/home/widget/location_input_box.dart';
@@ -199,7 +200,10 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 0,
             right: 0,
             child: (searchController.text.isNotEmpty)
-                ? const BookingBottomsheet()
+                ? Visibility(
+                    visible: context.watch<TripProvider>().showBookingBottomSheet,
+                    child: const BookingBottomsheet(),
+                  )
                 : const SizedBox.shrink(),
           ),
         ],
