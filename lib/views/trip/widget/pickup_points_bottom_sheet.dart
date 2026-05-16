@@ -72,7 +72,10 @@ class _PickupPointsBottomSheetState extends State<PickupPointsBottomSheet> {
                       color: isSelected ? const Color(0xff176bac) : Colors.transparent,
                     ),
                   ),
-                  child: ListTile(
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    child: ListTile(
                     selected: isSelected,
                     leading: Icon(
                       Icons.location_pin, 
@@ -103,6 +106,7 @@ class _PickupPointsBottomSheetState extends State<PickupPointsBottomSheet> {
                     onTap: () {
                       setState(() { localSelectedIndex = index; });
                     },
+                  ),
                   ),
                 );
               },
